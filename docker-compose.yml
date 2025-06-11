@@ -1,0 +1,58 @@
+version: "3.9"
+services:
+  web:
+    container_name: job_board_backend_api_web
+    build: .
+    command: []
+    entrypoint: ["/entrypoint.sh"]
+    restart: always
+    volumes:
+      - .:/app:cached # optimize for macOS; remove for production
+    ports:
+      - 8000:8000
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings
+      DEBUG: "TRUE"
+
+  db:
+    container_name: job_board_backend_api_db
+    image: postgres:17-alpine
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - 5451:5432
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+
+  redis:
+    container_name: job_board_backend_api_redis
+    image: redis:8.0-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+
+  celery:
+    build: .
+    container_name: job_board_backend_api_celery
+    command: celery -A config.celery worker --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - db
+    env_file:
+      - .env
+    # restart: always
+
+volumes:
+  postgres_data:
